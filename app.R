@@ -65,8 +65,8 @@ server <- function(input, output) {
     SMallocation <- ifelse(Sizeha >= 50000, 50, predict(modsm, data.frame(x2 = Sizeha))*Ptotal)
     LMallocation <- ifelse(Sizeha >= 50000, 100, predict(modlm, data.frame(x = Sizeha))*Ptotal)
     
-    filtered_data$NA.n <- as.integer(ceiling(filtered_data$value * LMallocation * filtered_data$Scaling))
-    filtered_data$ON.n <- as.integer(ceiling(filtered_data$value * SMallocation * filtered_data$Scaling))
+    filtered_data$NA.n <- as.integer(ceiling(filtered_data$value * LMallocation))
+    filtered_data$ON.n <- as.integer(ceiling(filtered_data$value * SMallocation))
     
     list(
       x = x, y = y, x2 = x2, y2 = y2,
