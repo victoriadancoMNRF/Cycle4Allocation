@@ -14,7 +14,7 @@ ui <- fluidPage(
     ),
     
     mainPanel(
-      plotOutput("allocationPlot"),
+      #plotOutput("allocationPlot"),
       tableOutput("filteredTable"), 
       p("Note: "), 
       p("NA typically fished as two gang straps."), 
@@ -92,6 +92,9 @@ server <- function(input, output) {
     )
   })
   
+  output$filteredTable <- renderTable({
+   data()$filtered_data[,c(3,5:6)]
+  })
   # Render plot
   # output$allocationPlot <- renderPlot({
   #   d <- data()
@@ -106,9 +109,7 @@ server <- function(input, output) {
   # })
   # 
   # Render filtered table
-  output$filteredTable <- renderTable({
-   data()$filtered_data[,c(3,5:6)]
-  })
+  
 
   
 }  
