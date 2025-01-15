@@ -1,0 +1,95 @@
+# Load necessary libraries
+library(shiny)
+library(ggplot2)
+library(tidyverse)
+
+# Define the UI
+ui <- fluidPage(
+  titlePanel("Net Allocations and Depth-Based Calculations"),
+
+  sidebarLayout(
+    sidebarPanel(
+      numericInput("Sizeha", "Lake Size (ha):", value = 45000, min = 1, step = 1),
+      numericInput("MaxDepth", "Maximum Depth:", value = 38, min = 1, step = 1),
+      actionButton("update", "Update")
+    ),
+
+    mainPanel(
+      plotOutput("allocationPlot"),
+      tableOutput("filteredTable")
+    )
+  )
+)
+
+# Define the server logic
+server <- function(input, output) {
+
+  # Reactive values for inputs
+  data <- reactive({
+    Sizeha <- input$Sizeha
+    MaxDepth <- input$MaxDepth
+
+    # largemesh polynomial
+    x <- 0:50000
+    y <- -0.00000003 * x^2 + 0.003 * x + 22.989
+    modlm <- lm(y ~ poly(x, 2))
+
+    # smallmesh polynomial
+    x2 <- 1:50000
+    y2 <- -0.00000001 * x2^2 + 0.0014 * x2 + 16.774
+    modsm <- lm(y2 ~ poly(x2, 2))
+
+    # Predict number of nets
+    SMallocation <- ifelse(Sizeha >= 50000, 50, predict(modsm, data.frame(x2 = Sizeha)))
+    LMallocation <- ifelse(Sizeha >= 50000, 100, predict(modlm, data.frame(x = Sizeha)))
+
+    # Create individual data frames
+    s3.6 <- data.frame(depth = c(6, 6), value = c(0.51, 0.49), strata = "3-6", Scaling = 0.5)
+    s6.12 <- data.frame(depth = c(12, 12, 12), value = c(0.37, 0.29, 0.34), strata = "6-12", Scaling = 0.61)
+    s12.20 <- data.frame(depth = c(20, 20, 20, 20), value = c(0.34, 0.25, 0.30, 0.11), strata = "12-20", Scaling = 0.63)
+    s20.35 <- data.frame(depth = c(35, 35, 35, 35, 35), value = c(0.28, 0.23, 0.26, 0.13, 0.10), strata = "20-35", Scaling = 0.68)
+    s35.50 <- data.frame(depth = c(50, 50, 50, 50, 50, 50), value = c(0.25, 0.19, 0.23, 0.14, 0.11, 0.09), strata = "35-50", Scaling = 0.78)
+    s50.75 <- data.frame(depth = c(75, 75, 75, 75, 75, 75, 75), value = c(0.22, 0.17, 0.20, 0.14, 0.12, 0.10, 0.06), strata = "50-75", Scaling = 0.88)
+    s200 <- data.frame(depth = c(999, 999, 999, 999, 999, 999, 999, 999), value = c(0.19, 0.14, 0.18, 0.14, 0.12, 0.11, 0.07, 0.05), strata = "75+", Scaling = 1)
+
+    # Combine into a single data frame
+    logicdf <- rbind(s3.6, s6.12, s12.20, s20.35, s35.50, s50.75, s200)
+
+    # Filter data based on maximum depth
+    logicdffilter <- logicdf %>% dplyr::filter(depth > MaxDepth)
+    depth_needed <- first(unique(logicdffilter$depth))
+
+    # Filter and calculate sets
+    filtered_data <- logicdf %>%
+      filter(depth == depth_needed) %>%
+      mutate(Sets_N_NA = value * LMallocation * Scaling,
+             Sets_N_ON = value * SMallocation * Scaling)
+
+    list(
+      x = x, y = y, x2 = x2, y2 = y2,
+      Sizeha = Sizeha, SMallocation = SMallocation, LMallocation = LMallocation,
+      filtered_data = filtered_data
+    )
+  })
+
+  # Render plot
+  output$allocationPlot <- renderPlot({
+    d <- data()
+    plot(d$x, d$y, type = "l", col = "blue", lwd = 2,
+         xlab = "Surface area (ha)", ylab = "Nets (n)",
+         main = "Net Allocations Cycle 4 - lake size")
+    lines(d$x2, d$y2, col = "red")
+    points(d$Sizeha, d$SMallocation, col = "red", pch = 19, cex = 1.5)
+    points(d$Sizeha, d$LMallocation, col = "blue", pch = 19, cex = 1.5)
+    legend("topleft", legend = c("NA large mesh", "ON small mesh"),
+           col = c("blue", "red"), lty = c(1, 1), lwd = 2)
+  })
+
+  # Render filtered table
+  output$filteredTable <- renderTable({
+    data()$filtered_data
+  })
+}
+
+# Run the app
+shinyApp(ui = ui, server = server)
