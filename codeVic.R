@@ -3,7 +3,7 @@ shinylive::export(
   destdir="docs"
 )
 
-remotes::install_github("rstudio/httpuv")
+#remotes::install_github("rstudio/httpuv")
 
 httpuv::runStaticServer(
   dir= "docs",

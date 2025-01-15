@@ -15,7 +15,12 @@ ui <- fluidPage(
     
     mainPanel(
       plotOutput("allocationPlot"),
-      tableOutput("filteredTable")
+      tableOutput("filteredTable"), 
+      p("Note: "), 
+      p("NA typically fished as two gang straps."), 
+      p("ON typically fished as single gang")
+      
+      
     )
   )
 )
@@ -53,7 +58,7 @@ server <- function(input, output) {
     
     
     # Filter data based on maximum depth using base R
-    logicdffilter <- logicdf[logicdf$depth > MaxDepth, ]
+    logicdffilter <- logicdf[logicdf$depth >= MaxDepth, ]
     depth_needed <- unique(logicdffilter$depth)[1]
     
     # Filter and calculate sets using base R
@@ -68,6 +73,18 @@ server <- function(input, output) {
     filtered_data$NA.n <- as.integer(ceiling(filtered_data$value * LMallocation))
     filtered_data$ON.n <- as.integer(ceiling(filtered_data$value * SMallocation))
     
+    # Compute totals 
+    totals <- data.frame(
+    strata = "Totals",  
+    NA.n  = sum(filtered_data$NA.n),  
+    ON.n = sum(filtered_data$ON.n), 
+    depth=NA, 
+    value=NA, 
+    Scaling=NA
+    )
+    
+    filtered_data <- rbind(filtered_data, totals)
+    
     list(
       x = x, y = y, x2 = x2, y2 = y2,
       Sizeha = Sizeha, SMallocation = SMallocation, LMallocation = LMallocation,
@@ -76,18 +93,18 @@ server <- function(input, output) {
   })
   
   # Render plot
-  output$allocationPlot <- renderPlot({
-    d <- data()
-    plot(d$x, d$y, type = "l", col = "black", lwd = 2,
-         xlab = "Surface area (ha)", ylab = "Nets (n)",
-         main = "Net Allocations Cycle 4")
-    lines(d$x2, d$y2, col = "grey60")
-    points(d$Sizeha, d$SMallocation, col = "grey60", pch = 19, cex = 1.5)
-    points(d$Sizeha, d$LMallocation, col = "black", pch = 19, cex = 1.5)
-    legend("topleft", legend = c("NA large mesh", "ON small mesh"),
-           col = c("black", "grey60"), lty = c(1, 1), lwd = 2)
-  })
-  
+  # output$allocationPlot <- renderPlot({
+  #   d <- data()
+  #   plot(d$x, d$y, type = "l", col = "black", lwd = 2,
+  #        xlab = "Surface area (ha)", ylab = "Nets (n)",
+  #        main = "Net Allocations Cycle 4")
+  #   lines(d$x2, d$y2, col = "grey60")
+  #   points(d$Sizeha, d$SMallocation, col = "grey60", pch = 19, cex = 1.5)
+  #   points(d$Sizeha, d$LMallocation, col = "black", pch = 19, cex = 1.5)
+  #   legend("topleft", legend = c("NA large mesh", "ON small mesh"),
+  #          col = c("black", "grey60"), lty = c(1, 1), lwd = 2)
+  # })
+  # 
   # Render filtered table
   output$filteredTable <- renderTable({
    data()$filtered_data[,c(3,5:6)]
